@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Splash: fixed brand colors (splash renders before Compose dynamic theme is resolved). -->
+    <color name="splash_background">#E3EFF0</color>
+    <color name="splash_accent">#CC7C4DFF</color>
+    <color name="ic_launcher_background">#00FFFFFF</color>
+</resources>

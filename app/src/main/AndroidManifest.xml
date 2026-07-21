@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Usage tracking (special access, granted via Settings, not a runtime prompt) -->
+    <uses-permission
+        android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
+
+    <!-- Overlay: renders the block screen AND exempts us from bg-activity-start limits -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Foreground service: specialUse (no timeout, unlike dataSync's 6h on Android 15) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+
+    <!-- Survivability -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Enumerate installed apps for rule targeting (declare with Play justification) -->
+    <uses-permission
+        android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+
+    <!-- Child scans the parent's pairing QR -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature
+        android:name="android.hardware.camera.any"
+        android:required="false" />
+
+    <application
+        android:name="com.shdev.guardian.GuardianApplication"
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="Guardian"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:theme="@style/Theme.Splash">
+
+        <!-- Firebase does not start itself. FirebaseInitProvider is a ContentProvider merged in by the
+             SDK that runs on the main thread BEFORE Application.onCreate; removing it is what actually
+             disables automatic initialization (the meta-data flags below do not — they only stop
+             messaging/analytics auto-init once Firebase is already up).
+
+             Everything now goes through FirebaseInitializer: initializeForPairing() just before the QR
+             pairing screen, and initializeIfPaired() from GuardianApplication.onCreate for paired
+             devices on later cold starts. An unpaired install never initializes Firebase at all. -->
+        <provider
+            android:name="com.google.firebase.provider.FirebaseInitProvider"
+            android:authorities="${applicationId}.firebaseinitprovider"
+            android:exported="false"
+            tools:node="remove" />
+
+        <!-- Belt-and-braces once Firebase IS initialized: no token is generated or refreshed until
+             FcmTokenSyncer asks for one, after pairing has succeeded. -->
+        <meta-data
+            android:name="firebase_messaging_auto_init_enabled"
+            android:value="false" />
+        <meta-data
+            android:name="firebase_analytics_collection_enabled"
+            android:value="false" />
+
+        <!-- Onboarding: role selection -> parent QR render / child scanner -->
+        <activity
+            android:name="com.shdev.guardian.ui.OnboardingActivity"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden|keyboard|navigation|uiMode"
+            android:exported="true"
+            android:theme="@style/Theme.Splash">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <!-- Always-on enforcement loop -->
+        <service
+            android:name="com.shdev.guardian.feature.child.impl.service.MonitorService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="parental_control_app_monitoring" />
+        </service>
+
+        <!-- FCM poke receiver -->
+        <service
+            android:name="com.shdev.guardian.feature.child.impl.fcm.GuardianFcmService"
+            android:exported="false">
+            <meta-data
+                android:name="firebase_messaging_installation_id_enabled"
+                android:value="true" />
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+
+        <!-- Boot / update / fast-boot restart -->
+        <receiver
+            android:name="com.shdev.guardian.feature.child.impl.receiver.BootReceiver"
+            android:directBootAware="true"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.LOCKED_BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Clock-tamper detection -->
+        <receiver
+            android:name="com.shdev.guardian.feature.child.impl.receiver.TimeChangedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- Exact-alarm watchdog channel -->
+        <receiver
+            android:name="com.shdev.guardian.feature.child.impl.receiver.WatchdogAlarmReceiver"
+            android:exported="false" />
+
+        <!-- Device admin: deactivation warning -> parent alert -->
+        <receiver
+            android:name="com.shdev.guardian.feature.child.impl.receiver.SupervisorDeviceAdminReceiver"
+            android:exported="true"
+            android:permission="android.permission.BIND_DEVICE_ADMIN">
+            <meta-data
+                android:name="android.app.device_admin"
+                android:resource="@xml/device_admin" />
+            <intent-filter>
+                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+            </intent-filter>
+        </receiver>
+
+    </application>
+</manifest>

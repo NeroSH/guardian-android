@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?><!-- Minimal device-admin policy: we only need the deactivation-warning hook, not owner powers. -->
+<device-admin>
+    <uses-policies>
+        <watch-login />
+    </uses-policies>
+</device-admin>
