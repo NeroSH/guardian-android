@@ -17,15 +17,16 @@ package com.shdev.guardian.data.rules
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import io.ktor.client.request.query
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
 
 /** Result of a policy save: the version-race is surfaced explicitly so the UI can reconcile. */
 sealed interface SaveResult {
@@ -46,10 +47,10 @@ class ParentRulesApi(
     private val json: Json = Json { ignoreUnknownKeys = true },
 ) {
     /** Always fetch the full document (sinceVersion = -1 forces a body even at version 0). */
-    suspend fun getPolicy(): PolicyDto =
-        http.get("$baseUrl/sync/policy") {
-            parameter("sinceVersion", -1)
-        }.body()
+    suspend fun getPolicy(): PolicyDto = http.query("$baseUrl/sync/policy") {
+        contentType(ContentType.Application.Json)
+        setBody(json.encodeToJsonElement(mapOf<String, Long>("sinceVersion" to -1)))
+    }.body()
 
     suspend fun updatePolicy(expectedVersion: Long, edit: PolicyEditDto): SaveResult {
         val resp = http.post("$baseUrl/sync/policy") {

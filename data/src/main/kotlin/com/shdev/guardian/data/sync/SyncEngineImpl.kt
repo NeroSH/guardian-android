@@ -24,9 +24,8 @@ import com.shdev.guardian.data.db.PolicyCacheEntity
 import com.shdev.guardian.data.db.SessionDao
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
-import io.ktor.client.request.get
-import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import io.ktor.client.request.query
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
@@ -34,6 +33,7 @@ import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.contentType
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.encodeToJsonElement
 
 /**
  * Concrete sync. Enforcement never touches this — only SyncWorker does.
@@ -59,8 +59,9 @@ internal class SyncEngineImpl(
 
     override suspend fun pullPolicy() {
         val cachedVersion = policyCacheDao.version() ?: 0L
-        val resp: HttpResponse = http.get("$baseUrl/sync/policy") {
-            parameter("sinceVersion", cachedVersion)
+        val resp: HttpResponse = http.query("$baseUrl/sync/policy") {
+            contentType(ContentType.Application.Json)
+            setBody(json.encodeToJsonElement(mapOf("sinceVersion" to cachedVersion)))
         }
         if (resp.status == HttpStatusCode.NotModified) return
 
