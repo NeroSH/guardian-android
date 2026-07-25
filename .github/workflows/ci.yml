@@ -27,23 +27,35 @@ jobs:
       G_SRV: ${{ secrets.G_SRV }}
       K_ZILLA: ${{ secrets.K_ZILLA }}
 
+    # Every action below is GitHub-owned and pinned to a full-length commit SHA, because this
+    # repo's Actions policy allows only GitHub-authored actions and rejects tag refs.
+    # gradle/actions/setup-gradle would be the better Gradle cache, but Gradle is a third-party
+    # owner and is blocked by that policy — see the cache step for the replacement.
     steps:
-      # actions/checkout — official GitHub action
-      - uses: actions/checkout@v7
+      # actions/checkout — official GitHub action (v7.0.1)
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
 
-      # actions/setup-java — official GitHub action.
+      # actions/setup-java — official GitHub action (v5.6.0).
       # JDK 21 = the Studio JBR this project is built with locally. The modules target
       # bytecode 17 (`compileOptions`), which a 21 toolchain emits fine.
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95
         with:
           distribution: temurin
           java-version: '21'
 
-      # gradle/actions — official Gradle action. Handles dependency + build caching,
-      # and validates the Gradle wrapper checksum by default.
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
+      # actions/cache — official GitHub action (v6.1.0).
+      # Caches the dependency cache and Gradle's local build cache (gradle.properties sets
+      # org.gradle.caching=true). Key busts whenever a build script or the version catalog moves.
+      - name: Cache Gradle
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle.kts', 'gradle/libs.versions.toml', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
 
       # compileSdk from gradle/libs.versions.toml. Runner images lag new platforms, and
       # relying on AGP's implicit SDK download is the flakiest part of an Android CI run.
@@ -70,9 +82,11 @@ jobs:
       # dependencies — that cross-module compile is the point.
       # :app and :macrobenchmark are absent on purpose: :app needs google-services.json +
       # kotzilla.json (see below), :macrobenchmark needs an emulator.
+      # --no-daemon: without setup-gradle managing daemon shutdown, a live daemon can leave lock
+      # files in ~/.gradle/caches at the moment actions/cache saves it.
       - name: Run unit tests
         run: |
-          ./gradlew \
+          ./gradlew --no-daemon \
             :core:policy:test \
             :core:navigation:testDebugUnitTest \
             :data:testDebugUnitTest \
@@ -88,13 +102,13 @@ jobs:
         run: |
           echo "$G_SRV" | base64 -d > app/google-services.json
           echo "$K_ZILLA" | base64 -d > app/kotzilla.json
-          ./gradlew :app:assembleDebug
+          ./gradlew --no-daemon :app:assembleDebug
 
-      # actions/upload-artifact — official GitHub action.
+      # actions/upload-artifact — official GitHub action (v7.0.1).
       # always() so a failed run still yields the HTML report that explains the failure.
       - name: Upload test reports
         if: always()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
           name: test-reports
           path: |
