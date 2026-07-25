@@ -61,7 +61,10 @@ jobs:
       # relying on AGP's implicit SDK download is the flakiest part of an Android CI run.
       # Bump this when compileSdk is bumped.
       - name: Install compileSdk platform
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" > /dev/null
+        run: |
+          SDK=$(grep -E '^compileSdk *=' gradle/libs.versions.toml | cut -d '"' -f2)                                                                                    
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"               
+          "$SDKMANAGER" "platforms;android-${SDK}.0" || "$SDKMANAGER" "platforms;android-${SDK}"
 
       # local.properties is gitignored, but app/build.gradle.kts reads signing values from it
       # at *configuration* time — without this, every Gradle task fails before it starts,
