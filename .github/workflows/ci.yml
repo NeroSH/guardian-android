@@ -1,0 +1,104 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+# One run per PR. Pushing a new commit cancels the in-flight run for that PR.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  unit-tests:
+    # This exact string is the required status check in the `main` ruleset.
+    # Renaming it silently un-gates main — update the ruleset in the same commit.
+    name: unit-tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # `secrets` is not a valid context in a step-level `if:`, so it is mirrored into env here.
+    # Both are unset today; see the ":app" step below.
+    env:
+      G_SRV: ${{ secrets.G_SRV }}
+      K_ZILLA: ${{ secrets.K_ZILLA }}
+
+    steps:
+      # actions/checkout — official GitHub action
+      - uses: actions/checkout@v7
+
+      # actions/setup-java — official GitHub action.
+      # JDK 21 = the Studio JBR this project is built with locally. The modules target
+      # bytecode 17 (`compileOptions`), which a 21 toolchain emits fine.
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      # gradle/actions — official Gradle action. Handles dependency + build caching,
+      # and validates the Gradle wrapper checksum by default.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      # compileSdk from gradle/libs.versions.toml. Runner images lag new platforms, and
+      # relying on AGP's implicit SDK download is the flakiest part of an Android CI run.
+      # Bump this when compileSdk is bumped.
+      - name: Install compileSdk platform
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" > /dev/null
+
+      # local.properties is gitignored, but app/build.gradle.kts reads signing values from it
+      # at *configuration* time — without this, every Gradle task fails before it starts,
+      # including tests in unrelated modules. Values are throwaway: nothing here is signed,
+      # and baseUrl only lands in a BuildConfig field that no unit test reads.
+      - name: Write stub local.properties
+        run: |
+          cat > local.properties <<'EOF'
+          keyAlias=ci
+          keyPassword=ci
+          storeFile=ci-unused.jks
+          storePassword=ci
+          baseUrl=http://localhost:8080
+          EOF
+
+      # :core:policy:test is the real suite (PolicyEvaluatorTest). The library testDebugUnitTest
+      # tasks have no test sources, but reaching them compiles every module against its
+      # dependencies — that cross-module compile is the point.
+      # :app and :macrobenchmark are absent on purpose: :app needs google-services.json +
+      # kotzilla.json (see below), :macrobenchmark needs an emulator.
+      - name: Run unit tests
+        run: |
+          ./gradlew \
+            :core:policy:test \
+            :core:navigation:testDebugUnitTest \
+            :data:testDebugUnitTest \
+            :feature:child:api:testDebugUnitTest \
+            :feature:child:impl:testDebugUnitTest \
+            :feature:parent:api:testDebugUnitTest \
+            :feature:parent:impl:testDebugUnitTest
+
+      # Skipped until both secrets exist. To turn on :app compile coverage, add repo secrets
+      # G_SRV and K_ZILLA (base64 of each file) — no edit needed here.
+      - name: Build :app
+        if: env.G_SRV != '' && env.K_ZILLA != ''
+        run: |
+          echo "$G_SRV" | base64 -d > app/google-services.json
+          echo "$K_ZILLA" | base64 -d > app/kotzilla.json
+          ./gradlew :app:assembleDebug
+
+      # actions/upload-artifact — official GitHub action.
+      # always() so a failed run still yields the HTML report that explains the failure.
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-reports
+          path: |
+            **/build/reports/tests/**
+            **/build/test-results/**
+          retention-days: 14
+          if-no-files-found: warn
