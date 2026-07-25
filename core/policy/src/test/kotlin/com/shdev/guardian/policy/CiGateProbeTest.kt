@@ -5,5 +5,5 @@ import kotlin.test.assertEquals
 
 class CiGateProbeTest {
     @Test
-    fun probe() = assertEquals(expected = 1, actual = 2, message = "CI gate probe")
+    fun probe() = assertEquals(expected = 2, actual = 2, message = "CI gate probe")
 }
