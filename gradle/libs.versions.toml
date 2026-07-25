@@ -27,18 +27,21 @@ zxingCore = "3.5.4"
 coroutines = "1.11.0"
 firebaseBom = "34.16.0"
 googleServices = "4.5.0"
-kotlinTest = "2.4.0"
+kotlinTest = "2.4.10"
 slf4j = "1.7.36"
-kotzilla = "2.3.0"
+kotzilla = "2.3.1"
 benchmark = "1.5.0-alpha07"
-uiautomator = "2.4.0-rc01"
+uiautomator = "2.4.0"
 profileinstaller = "1.4.1"
 androidxTestExtJunit = "1.3.0"
+androidxTest = "1.7.0"
+junit4 = "4.13.2"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
-androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version = "1.0.1" }
+androidx-core-splashscreen = { module = "androidx.core:core-splashscreen", version = "1.2.0" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastore" }
+androidx-datastore = { module = "androidx.datastore:datastore", version.ref = "datastore" }
 androidx-work-runtime = { module = "androidx.work:work-runtime-ktx", version.ref = "workManager" }
 
 room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
@@ -71,6 +74,13 @@ androidx-benchmark-macro-junit4 = { module = "androidx.benchmark:benchmark-macro
 androidx-uiautomator = { module = "androidx.test.uiautomator:uiautomator", version.ref = "uiautomator" }
 androidx-profileinstaller = { module = "androidx.profileinstaller:profileinstaller", version.ref = "profileinstaller" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExtJunit" }
+
+# Microbenchmark (instrumented, :data androidTest) — DataStore encryption suite
+androidx-benchmark-junit4 = { module = "androidx.benchmark:benchmark-junit4", version.ref = "benchmark" }
+androidx-test-runner = { module = "androidx.test:runner", version.ref = "androidxTest" }
+androidx-test-rules = { module = "androidx.test:rules", version.ref = "androidxTest" }
+kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-test", version.ref = "coroutines" }
+junit4 = { module = "junit:junit", version.ref = "junit4" }
 
 # Compose
 compose-bom = { module = "androidx.compose:compose-bom", version.ref = "composeBom" }

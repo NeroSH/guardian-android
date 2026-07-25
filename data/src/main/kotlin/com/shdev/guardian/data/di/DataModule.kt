@@ -34,7 +34,7 @@ import com.shdev.guardian.data.auth.UnauthorizedException
 import com.shdev.guardian.data.auth.VerifiedEmailApi
 import com.shdev.guardian.data.config.RoleStore
 import com.shdev.guardian.data.crypto.CryptoDataStore
-import com.shdev.guardian.data.crypto.CryptoDataStoreIml
+import com.shdev.guardian.data.crypto.CryptoDataStoreImpl
 import com.shdev.guardian.data.db.GuardianDatabase
 import com.shdev.guardian.data.firebase.FirebaseStateStore
 import com.shdev.guardian.data.rules.ParentRulesApi
@@ -89,7 +89,7 @@ val dataModule = module {
     single { get<GuardianDatabase>().outboxDao() }
     single { get<GuardianDatabase>().clockAnchorDao() }
 
-    single<CryptoDataStore> { CryptoDataStoreIml(androidContext()) }
+    single<CryptoDataStore> { CryptoDataStoreImpl(androidContext()) }
     single<SyncEngine> {
         SyncEngineImpl(
             http = get(),

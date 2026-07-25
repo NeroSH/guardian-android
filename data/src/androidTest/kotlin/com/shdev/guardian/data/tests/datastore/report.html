@@ -1,0 +1,2657 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1" name="viewport">
+    <title>Guardian · DataStore encryption benchmark</title>
+    <style>:root {
+  color-scheme: light dark;
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --border: #e2e5ea;
+  --text: #14181f;
+  --muted: #6b7280;
+  --accent: #2f6fed;
+  --faster: #0f7b3d;
+  --slower: #b3261e;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .04);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101317;
+    --surface: #171b21;
+    --border: #262c35;
+    --text: #e7eaee;
+    --muted: #97a1b0;
+    --accent: #79a4ff;
+    --faster: #57d38c;
+    --slower: #ff8a80;
+    --shadow: none;
+  }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  padding: 32px 20px 80px;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+main { max-width: 1180px; margin: 0 auto; }
+h1 { font-size: 26px; margin: 0 0 6px; letter-spacing: -.01em; }
+h2 { font-size: 19px; margin: 40px 0 6px; letter-spacing: -.01em; }
+h3 { font-size: 15px; margin: 24px 0 10px; display: flex; align-items: center; gap: 8px; }
+p { margin: 0 0 10px; }
+.lede { color: var(--muted); max-width: 70ch; }
+.note { color: var(--muted); max-width: 78ch; margin-bottom: 4px; }
+.warn {
+  margin-top: 14px; padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--border); border-left: 3px solid var(--slower);
+  background: var(--surface); color: var(--muted); max-width: 78ch;
+}
+header { padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+dl.meta {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 10px; margin: 18px 0 4px;
+}
+dl.meta dt { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+dl.meta dd { margin: 2px 0 0; font-weight: 600; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+.card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  padding: 14px 16px; box-shadow: var(--shadow);
+}
+.card.reference { border-color: var(--accent); }
+.card h3 { margin: 0 0 6px; }
+.card p { color: var(--muted); font-size: 13px; }
+.card code { font-size: 11px; color: var(--muted); }
+.pill {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .08em; font-weight: 700;
+  color: var(--accent); border: 1px solid var(--accent); border-radius: 999px; padding: 1px 7px;
+}
+.table-block { margin-top: 8px; }
+.scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+thead th {
+  position: sticky; top: 0; background: var(--surface); text-align: right;
+  font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+  padding: 9px 12px; border-bottom: 1px solid var(--border); white-space: nowrap;
+}
+thead th:first-child { text-align: left; }
+thead th.sub { text-transform: none; letter-spacing: 0; font-weight: 500; }
+tbody th {
+  text-align: left; font-weight: 600; padding: 9px 12px; vertical-align: top;
+  border-bottom: 1px solid var(--border); min-width: 220px;
+}
+tbody th small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; max-width: 44ch; }
+tbody td { padding: 9px 12px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td, tbody tr:hover th { background: rgba(127, 145, 180, .08); }
+.num { text-align: right; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+.muted { color: var(--muted); }
+.faster { color: var(--faster); font-weight: 600; }
+.slower { color: var(--slower); font-weight: 600; }
+.neutral { color: var(--muted); }
+.tag {
+  display: inline-block; font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--muted); border: 1px solid var(--border); border-radius: 4px;
+  padding: 0 5px; margin-right: 6px;
+}
+.finding .verdict {
+  font-size: 13px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+}
+.finding .verdict.bad { border-left: 3px solid var(--slower); }
+.finding .verdict.good { border-left: 3px solid var(--faster); }
+table.kv { margin-top: 10px; font-size: 12px; }
+table.kv th { min-width: 0; font-weight: 500; color: var(--muted); padding: 5px 0; }
+table.kv td { padding: 5px 0; }
+table.raw th, table.raw td { white-space: nowrap; }
+table.raw tbody th { min-width: 0; }
+details { margin-top: 18px; }
+summary { cursor: pointer; color: var(--muted); font-size: 13px; padding: 6px 0; }
+    </style>
+</head>
+<body>
+<main>
+    <header>
+        <h1>Guardian · DataStore encryption benchmark</h1>
+        <p class="lede">Speed, RAM and on-disk cost of encrypting a Jetpack DataStore document,
+            measured across three payload sizes and 2 implementations.</p>
+        <dl class="meta">
+            <div>
+                <dt>Device</dt>
+                <dd>Google sdk_gphone64_arm64 (emu64a)</dd>
+            </div>
+            <div>
+                <dt>Android</dt>
+                <dd>API 36 · arm64-v8a</dd>
+            </div>
+            <div>
+                <dt>Heap limit</dt>
+                <dd>192.00 MB</dd>
+            </div>
+            <div>
+                <dt>Build type</dt>
+                <dd>emulator</dd>
+            </div>
+            <div>
+                <dt>Generated</dt>
+                <dd>2026-07-25 13:26:29</dd>
+            </div>
+        </dl>
+        <p class="warn">Measured on an emulator, from a debuggable test build. Rows are comparable
+            with each other; the absolute numbers are not production timings. Re-run on a physical
+            device before quoting them.</p>
+    </header>
+    <section>
+        <h2>Implementations compared</h2>
+        <div class="cards">
+            <article class="card reference">
+                <h3>AndroidKeyStore AES-256-GCM<span class="pill">reference</span></h3>
+                <p>CryptoDataStoreImpl + EncryptedJsonSerializer — kotlinx.serialization JSON,
+                    AES-256-GCM with a random 12-byte IV per write, 128-bit auth tag, key in
+                    AndroidKeyStore (StrongBox-backed when available), stored as Base64 of
+                    iv||ciphertext.</p>
+                <code>keystore_aes_gcm_json</code>
+            </article>
+            <article class="card">
+                <h3>Plaintext JSON (control)</h3>
+                <p>No encryption — kotlinx.serialization JSON written straight to the DataStore
+                    file. The floor for speed and disk size, and a document anyone with the file can
+                    read.</p>
+                <code>plaintext_json_control</code>
+            </article>
+        </div>
+    </section>
+    <section>
+        <h2>Datasets</h2>
+        <div class="scroll">
+            <table>
+                <thead>
+                <tr>
+                    <th>Dataset</th>
+                    <th>Serialized JSON</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <th scope="row">Empty</th>
+                    <td class="num">2 B</td>
+                </tr>
+                <tr>
+                    <th scope="row">Medium</th>
+                    <td class="num">27.9 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Large</th>
+                    <td class="num">1.42 MB</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section>
+        <h2>CRUD speed</h2>
+        <p class="note">Median wall-clock time per operation. Lower is better; the delta compares
+            against the reference implementation.</p>
+    </section>
+    <section class="table-block">
+        <h3>Empty · speed</h3>
+        <div class="scroll">
+            <table>
+                <thead>
+                <tr>
+                    <th scope="col">Scenario</th>
+                    <th colspan="2" scope="col">AndroidKeyStore AES-256-GCM</th>
+                    <th colspan="2" scope="col">Plaintext JSON (control)</th>
+                </tr>
+                <tr>
+                    <th></th>
+                    <th class="sub">median</th>
+                    <th class="sub">vs ref</th>
+                    <th class="sub">median</th>
+                    <th class="sub">vs ref</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <th scope="row"><span class="tag">Create</span>Create — first write<small>Fresh
+                        store over a fresh file: initial (empty) read, serialize, encrypt, write,
+                        fsync, atomic rename.</small></th>
+                    <td class="num" title="min 4.08 ms · p90 5.04 ms · max 9.71 ms · 15 iterations">
+                        4.65 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num" title="min 2.92 ms · p90 4.38 ms · max 5.16 ms · 15 iterations">
+                        3.62 ms
+                    </td>
+                    <td class="num faster">-22.2%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Read</span>Read — cold<small>New DataStore
+                        instance over an already populated file: the read path that pays for
+                        decryption. Every later read through the same instance is served from
+                        memory.</small></th>
+                    <td class="num" title="min 2.40 ms · p90 2.70 ms · max 3.35 ms · 15 iterations">
+                        2.57 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 767.3 µs · p90 1.08 ms · max 1.33 ms · 15 iterations">868.9 µs
+                    </td>
+                    <td class="num faster">-66.2%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Read</span>Read — warm<small>Read from the
+                        in-memory cache of a live DataStore. Touches neither disk nor the codec, so
+                        it should be identical across implementations.</small></th>
+                    <td class="num"
+                        title="min 270.7 µs · p90 464.4 µs · max 2.25 ms · 15 iterations">396.2 µs
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 274.3 µs · p90 375.0 µs · max 392.1 µs · 15 iterations">313.8 µs
+                    </td>
+                    <td class="num faster">-20.8%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Update</span>Update — whole document<small>updateData
+                        replacing the document with an equally sized but different one.</small></th>
+                    <td class="num" title="min 5.63 ms · p90 6.20 ms · max 6.26 ms · 15 iterations">
+                        5.93 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num" title="min 2.06 ms · p90 2.48 ms · max 2.51 ms · 15 iterations">
+                        2.33 ms
+                    </td>
+                    <td class="num faster">-60.8%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Update</span>Update — one field<small>updateData
+                        changing a single Long. Compare against &#39;whole document&#39; to see
+                        whether anything is saved by touching less data.</small></th>
+                    <td class="num" title="min 5.79 ms · p90 6.21 ms · max 6.35 ms · 15 iterations">
+                        6.01 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num" title="min 2.17 ms · p90 3.22 ms · max 3.35 ms · 15 iterations">
+                        2.42 ms
+                    </td>
+                    <td class="num faster">-59.7%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Update</span>Update — no-op<small>updateData
+                        returning the current instance unchanged. The write is skipped once equals()
+                        matches — the test asserts the file is untouched — but everything before the
+                        comparison still runs. Compare this row against the cold read to see how
+                        much of an update is spent getting to the point of deciding not to
+                        write.</small></th>
+                    <td class="num" title="min 2.45 ms · p90 2.88 ms · max 4.29 ms · 15 iterations">
+                        2.67 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 772.7 µs · p90 1.05 ms · max 2.25 ms · 15 iterations">905.6 µs
+                    </td>
+                    <td class="num faster">-66.0%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Delete</span>Delete — reset to default<small>updateData
+                        writing the default instance — the way a typed DataStore is cleared.</small>
+                    </th>
+                    <td class="num" title="min 5.47 ms · p90 5.90 ms · max 5.96 ms · 15 iterations">
+                        5.65 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num" title="min 2.42 ms · p90 3.23 ms · max 4.27 ms · 15 iterations">
+                        2.86 ms
+                    </td>
+                    <td class="num faster">-49.4%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Delete</span>Delete — remove file<small>Closing
+                        the store and unlinking the file, for reference against the reset
+                        above.</small></th>
+                    <td class="num" title="min 23.8 µs · p90 29.7 µs · max 32.0 µs · 15 iterations">
+                        25.7 µs
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 33.8 µs · p90 97.3 µs · max 200.9 µs · 15 iterations">51.5 µs
+                    </td>
+                    <td class="num slower">+100.3%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Codec only</span>Encrypt — codec only<small>The
+                        encryption primitive on the already serialized JSON. No DataStore, no
+                        I/O.</small></th>
+                    <td class="num" title="min 1.72 ms · p90 2.01 ms · max 2.30 ms · 15 iterations">
+                        1.87 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Codec only</span>Decrypt — codec only<small>The
+                        decryption primitive on the stored blob. No DataStore, no I/O.</small></th>
+                    <td class="num" title="min 1.72 ms · p90 1.91 ms · max 2.03 ms · 15 iterations">
+                        1.83 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Serialization only</span>JSON encode
+                        only<small>kotlinx.serialization encode. The floor under every write;
+                            subtract it to isolate the cost of encryption.</small></th>
+                    <td class="num" title="min 13.5 µs · p90 14.2 µs · max 16.3 µs · 15 iterations">
+                        13.8 µs
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num" title="min 10.4 µs · p90 11.4 µs · max 94.5 µs · 15 iterations">
+                        10.7 µs
+                    </td>
+                    <td class="num faster">-22.7%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Serialization only</span>JSON decode
+                        only<small>kotlinx.serialization decode. The floor under every cold
+                            read.</small></th>
+                    <td class="num" title="min 7.1 µs · p90 8.7 µs · max 15.8 µs · 15 iterations">
+                        7.3 µs
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num" title="min 6.7 µs · p90 8.0 µs · max 8.5 µs · 15 iterations">7.0
+                        µs
+                    </td>
+                    <td class="num faster">-4.6%</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section class="table-block">
+        <h3>Medium · speed</h3>
+        <div class="scroll">
+            <table>
+                <thead>
+                <tr>
+                    <th scope="col">Scenario</th>
+                    <th colspan="2" scope="col">AndroidKeyStore AES-256-GCM</th>
+                    <th colspan="2" scope="col">Plaintext JSON (control)</th>
+                </tr>
+                <tr>
+                    <th></th>
+                    <th class="sub">median</th>
+                    <th class="sub">vs ref</th>
+                    <th class="sub">median</th>
+                    <th class="sub">vs ref</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <th scope="row"><span class="tag">Create</span>Create — first write<small>Fresh
+                        store over a fresh file: initial (empty) read, serialize, encrypt, write,
+                        fsync, atomic rename.</small></th>
+                    <td class="num" title="min 6.75 ms · p90 9.10 ms · max 9.80 ms · 15 iterations">
+                        7.44 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num" title="min 4.47 ms · p90 5.67 ms · max 6.06 ms · 15 iterations">
+                        4.90 ms
+                    </td>
+                    <td class="num faster">-34.1%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Read</span>Read — cold<small>New DataStore
+                        instance over an already populated file: the read path that pays for
+                        decryption. Every later read through the same instance is served from
+                        memory.</small></th>
+                    <td class="num"
+                        title="min 6.71 ms · p90 10.58 ms · max 12.17 ms · 15 iterations">8.18 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num" title="min 3.68 ms · p90 4.36 ms · max 4.98 ms · 15 iterations">
+                        4.12 ms
+                    </td>
+                    <td class="num faster">-49.6%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Read</span>Read — warm<small>Read from the
+                        in-memory cache of a live DataStore. Touches neither disk nor the codec, so
+                        it should be identical across implementations.</small></th>
+                    <td class="num"
+                        title="min 204.1 µs · p90 250.3 µs · max 261.3 µs · 15 iterations">223.7 µs
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 158.2 µs · p90 521.0 µs · max 708.0 µs · 15 iterations">365.4 µs
+                    </td>
+                    <td class="num slower">+63.4%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Update</span>Update — whole document<small>updateData
+                        replacing the document with an equally sized but different one.</small></th>
+                    <td class="num"
+                        title="min 8.08 ms · p90 8.43 ms · max 11.70 ms · 15 iterations">8.33 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 8.02 ms · p90 12.69 ms · max 32.64 ms · 15 iterations">10.82 ms
+                    </td>
+                    <td class="num slower">+29.8%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Update</span>Update — one field<small>updateData
+                        changing a single Long. Compare against &#39;whole document&#39; to see
+                        whether anything is saved by touching less data.</small></th>
+                    <td class="num"
+                        title="min 8.11 ms · p90 8.72 ms · max 11.39 ms · 15 iterations">8.44 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 4.31 ms · p90 6.45 ms · max 13.64 ms · 15 iterations">4.74 ms
+                    </td>
+                    <td class="num faster">-43.8%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Update</span>Update — no-op<small>updateData
+                        returning the current instance unchanged. The write is skipped once equals()
+                        matches — the test asserts the file is untouched — but everything before the
+                        comparison still runs. Compare this row against the cold read to see how
+                        much of an update is spent getting to the point of deciding not to
+                        write.</small></th>
+                    <td class="num" title="min 4.18 ms · p90 4.47 ms · max 4.67 ms · 15 iterations">
+                        4.38 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num" title="min 2.39 ms · p90 2.86 ms · max 2.93 ms · 15 iterations">
+                        2.73 ms
+                    </td>
+                    <td class="num faster">-37.8%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Delete</span>Delete — reset to default<small>updateData
+                        writing the default instance — the way a typed DataStore is cleared.</small>
+                    </th>
+                    <td class="num" title="min 7.17 ms · p90 7.80 ms · max 8.73 ms · 15 iterations">
+                        7.44 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num" title="min 4.05 ms · p90 5.18 ms · max 6.36 ms · 15 iterations">
+                        4.59 ms
+                    </td>
+                    <td class="num faster">-38.3%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Delete</span>Delete — remove file<small>Closing
+                        the store and unlinking the file, for reference against the reset
+                        above.</small></th>
+                    <td class="num" title="min 24.9 µs · p90 30.0 µs · max 32.2 µs · 15 iterations">
+                        27.8 µs
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 55.6 µs · p90 127.0 µs · max 297.9 µs · 15 iterations">93.4 µs
+                    </td>
+                    <td class="num slower">+235.5%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Codec only</span>Encrypt — codec only<small>The
+                        encryption primitive on the already serialized JSON. No DataStore, no
+                        I/O.</small></th>
+                    <td class="num" title="min 1.82 ms · p90 2.74 ms · max 2.80 ms · 15 iterations">
+                        2.00 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Codec only</span>Decrypt — codec only<small>The
+                        decryption primitive on the stored blob. No DataStore, no I/O.</small></th>
+                    <td class="num" title="min 1.92 ms · p90 3.46 ms · max 3.85 ms · 15 iterations">
+                        2.17 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Serialization only</span>JSON encode
+                        only<small>kotlinx.serialization encode. The floor under every write;
+                            subtract it to isolate the cost of encryption.</small></th>
+                    <td class="num"
+                        title="min 552.2 µs · p90 578.9 µs · max 620.1 µs · 15 iterations">556.3 µs
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 718.9 µs · p90 1.42 ms · max 2.02 ms · 15 iterations">855.7 µs
+                    </td>
+                    <td class="num slower">+53.8%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Serialization only</span>JSON decode
+                        only<small>kotlinx.serialization decode. The floor under every cold
+                            read.</small></th>
+                    <td class="num" title="min 1.31 ms · p90 1.36 ms · max 1.38 ms · 15 iterations">
+                        1.32 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num" title="min 1.47 ms · p90 3.14 ms · max 6.20 ms · 15 iterations">
+                        2.02 ms
+                    </td>
+                    <td class="num slower">+52.8%</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section class="table-block">
+        <h3>Large · speed</h3>
+        <div class="scroll">
+            <table>
+                <thead>
+                <tr>
+                    <th scope="col">Scenario</th>
+                    <th colspan="2" scope="col">AndroidKeyStore AES-256-GCM</th>
+                    <th colspan="2" scope="col">Plaintext JSON (control)</th>
+                </tr>
+                <tr>
+                    <th></th>
+                    <th class="sub">median</th>
+                    <th class="sub">vs ref</th>
+                    <th class="sub">median</th>
+                    <th class="sub">vs ref</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <th scope="row"><span class="tag">Create</span>Create — first write<small>Fresh
+                        store over a fresh file: initial (empty) read, serialize, encrypt, write,
+                        fsync, atomic rename.</small></th>
+                    <td class="num"
+                        title="min 76.39 ms · p90 81.29 ms · max 84.94 ms · 7 iterations">80.91 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 127.23 ms · p90 284.46 ms · max 349.29 ms · 7 iterations">212.44
+                        ms
+                    </td>
+                    <td class="num slower">+162.6%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Read</span>Read — cold<small>New DataStore
+                        instance over an already populated file: the read path that pays for
+                        decryption. Every later read through the same instance is served from
+                        memory.</small></th>
+                    <td class="num"
+                        title="min 106.16 ms · p90 110.04 ms · max 111.56 ms · 7 iterations">108.65
+                        ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 81.83 ms · p90 96.37 ms · max 99.86 ms · 7 iterations">84.25 ms
+                    </td>
+                    <td class="num faster">-22.5%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Read</span>Read — warm<small>Read from the
+                        in-memory cache of a live DataStore. Touches neither disk nor the codec, so
+                        it should be identical across implementations.</small></th>
+                    <td class="num"
+                        title="min 241.3 µs · p90 286.8 µs · max 293.2 µs · 7 iterations">259.8 µs
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 259.0 µs · p90 433.8 µs · max 489.5 µs · 7 iterations">296.6 µs
+                    </td>
+                    <td class="num slower">+14.2%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Update</span>Update — whole document<small>updateData
+                        replacing the document with an equally sized but different one.</small></th>
+                    <td class="num"
+                        title="min 173.39 ms · p90 177.83 ms · max 183.02 ms · 7 iterations">175.26
+                        ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 108.64 ms · p90 116.79 ms · max 122.12 ms · 7 iterations">113.09
+                        ms
+                    </td>
+                    <td class="num faster">-35.5%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Update</span>Update — one field<small>updateData
+                        changing a single Long. Compare against &#39;whole document&#39; to see
+                        whether anything is saved by touching less data.</small></th>
+                    <td class="num"
+                        title="min 177.64 ms · p90 202.45 ms · max 209.71 ms · 7 iterations">186.75
+                        ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 114.50 ms · p90 119.04 ms · max 129.33 ms · 7 iterations">117.23
+                        ms
+                    </td>
+                    <td class="num faster">-37.2%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Update</span>Update — no-op<small>updateData
+                        returning the current instance unchanged. The write is skipped once equals()
+                        matches — the test asserts the file is untouched — but everything before the
+                        comparison still runs. Compare this row against the cold read to see how
+                        much of an update is spent getting to the point of deciding not to
+                        write.</small></th>
+                    <td class="num"
+                        title="min 107.86 ms · p90 110.51 ms · max 110.94 ms · 7 iterations">109.66
+                        ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 77.26 ms · p90 91.78 ms · max 96.23 ms · 7 iterations">82.58 ms
+                    </td>
+                    <td class="num faster">-24.7%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Delete</span>Delete — reset to default<small>updateData
+                        writing the default instance — the way a typed DataStore is cleared.</small>
+                    </th>
+                    <td class="num"
+                        title="min 111.32 ms · p90 118.35 ms · max 123.89 ms · 7 iterations">113.31
+                        ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 90.02 ms · p90 145.68 ms · max 180.77 ms · 7 iterations">98.92 ms
+                    </td>
+                    <td class="num faster">-12.7%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Delete</span>Delete — remove file<small>Closing
+                        the store and unlinking the file, for reference against the reset
+                        above.</small></th>
+                    <td class="num"
+                        title="min 138.7 µs · p90 178.0 µs · max 187.0 µs · 7 iterations">160.0 µs
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 123.6 µs · p90 234.8 µs · max 372.7 µs · 7 iterations">193.3 µs
+                    </td>
+                    <td class="num slower">+20.8%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Codec only</span>Encrypt — codec only<small>The
+                        encryption primitive on the already serialized JSON. No DataStore, no
+                        I/O.</small></th>
+                    <td class="num"
+                        title="min 30.98 ms · p90 34.06 ms · max 34.60 ms · 7 iterations">32.79 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Codec only</span>Decrypt — codec only<small>The
+                        decryption primitive on the stored blob. No DataStore, no I/O.</small></th>
+                    <td class="num"
+                        title="min 36.18 ms · p90 38.02 ms · max 38.44 ms · 7 iterations">36.68 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Serialization only</span>JSON encode
+                        only<small>kotlinx.serialization encode. The floor under every write;
+                            subtract it to isolate the cost of encryption.</small></th>
+                    <td class="num"
+                        title="min 30.25 ms · p90 34.42 ms · max 34.50 ms · 7 iterations">33.02 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 31.53 ms · p90 36.20 ms · max 36.29 ms · 7 iterations">34.18 ms
+                    </td>
+                    <td class="num slower">+3.5%</td>
+                </tr>
+                <tr>
+                    <th scope="row"><span class="tag">Serialization only</span>JSON decode
+                        only<small>kotlinx.serialization decode. The floor under every cold
+                            read.</small></th>
+                    <td class="num"
+                        title="min 67.73 ms · p90 73.63 ms · max 76.93 ms · 7 iterations">71.47 ms
+                    </td>
+                    <td class="num muted">ref</td>
+                    <td class="num"
+                        title="min 68.52 ms · p90 86.22 ms · max 87.51 ms · 7 iterations">76.34 ms
+                    </td>
+                    <td class="num slower">+6.8%</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section>
+        <h2>RAM consumption</h2>
+        <p class="note">Allocation churn is the delta of ART&#39;s art.gc.bytes-allocated across the
+            operation — every byte handed out, surviving or not. Retained is settled heap growth;
+            PSS is the resident footprint the OS charges the process.</p>
+    </section>
+    <section class="table-block">
+        <h3>Empty · memory</h3>
+        <div class="scroll">
+            <table>
+                <thead>
+                <tr>
+                    <th scope="col">Scenario</th>
+                    <th colspan="3" scope="col">AndroidKeyStore AES-256-GCM</th>
+                    <th colspan="3" scope="col">Plaintext JSON (control)</th>
+                </tr>
+                <tr>
+                    <th></th>
+                    <th class="sub">alloc churn</th>
+                    <th class="sub">retained</th>
+                    <th class="sub">PSS Δ</th>
+                    <th class="sub">alloc churn</th>
+                    <th class="sub">retained</th>
+                    <th class="sub">PSS Δ</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <th scope="row">Create — first write</th>
+                    <td class="num" title="peak 136.0 KB · 0 GCs">104.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+20.0 KB</td>
+                    <td class="num" title="peak 32.0 KB · 0 GCs">32.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+24.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Read — cold</th>
+                    <td class="num" title="peak 136.0 KB · 0 GCs">104.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+20.0 KB</td>
+                    <td class="num" title="peak 40.0 KB · 0 GCs">32.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+20.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Read — warm</th>
+                    <td class="num" title="peak 32.0 KB · 0 GCs">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+4.0 KB</td>
+                    <td class="num" title="peak 32.0 KB · 0 GCs">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                </tr>
+                <tr>
+                    <th scope="row">Update — whole document</th>
+                    <td class="num" title="peak 216.0 KB · 0 GCs">176.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num" title="peak 40.0 KB · 0 GCs">32.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">-188.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Update — one field</th>
+                    <td class="num" title="peak 216.0 KB · 0 GCs">176.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">-40.0 KB</td>
+                    <td class="num" title="peak 40.0 KB · 0 GCs">32.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+4.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Update — no-op</th>
+                    <td class="num" title="peak 112.0 KB · 0 GCs">104.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num" title="peak 40.0 KB · 0 GCs">32.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                </tr>
+                <tr>
+                    <th scope="row">Delete — reset to default</th>
+                    <td class="num" title="peak 216.0 KB · 0 GCs">176.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+4.0 KB</td>
+                    <td class="num" title="peak 40.0 KB · 0 GCs">32.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+4.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Delete — remove file</th>
+                    <td class="num" title="peak 0 B · 0 GCs">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num" title="peak 0 B · 0 GCs">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+24.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Encrypt — codec only</th>
+                    <td class="num" title="peak 104.0 KB · 0 GCs">72.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                </tr>
+                <tr>
+                    <th scope="row">Decrypt — codec only</th>
+                    <td class="num" title="peak 104.0 KB · 0 GCs">72.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                </tr>
+                <tr>
+                    <th scope="row">JSON encode only</th>
+                    <td class="num" title="peak 0 B · 0 GCs">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num" title="peak 0 B · 0 GCs">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                </tr>
+                <tr>
+                    <th scope="row">JSON decode only</th>
+                    <td class="num" title="peak 0 B · 0 GCs">0 B</td>
+                    <td class="num">-32.0 KB</td>
+                    <td class="num">-4.0 KB</td>
+                    <td class="num" title="peak 0 B · 0 GCs">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section class="table-block">
+        <h3>Medium · memory</h3>
+        <div class="scroll">
+            <table>
+                <thead>
+                <tr>
+                    <th scope="col">Scenario</th>
+                    <th colspan="3" scope="col">AndroidKeyStore AES-256-GCM</th>
+                    <th colspan="3" scope="col">Plaintext JSON (control)</th>
+                </tr>
+                <tr>
+                    <th></th>
+                    <th class="sub">alloc churn</th>
+                    <th class="sub">retained</th>
+                    <th class="sub">PSS Δ</th>
+                    <th class="sub">alloc churn</th>
+                    <th class="sub">retained</th>
+                    <th class="sub">PSS Δ</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <th scope="row">Create — first write</th>
+                    <td class="num" title="peak 348.0 KB · 0 GCs">316.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+36.0 KB</td>
+                    <td class="num" title="peak 120.0 KB · 0 GCs">120.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+28.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Read — cold</th>
+                    <td class="num" title="peak 512.0 KB · 0 GCs">480.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+24.0 KB</td>
+                    <td class="num" title="peak 252.0 KB · 0 GCs">244.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+20.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Read — warm</th>
+                    <td class="num" title="peak 32.0 KB · 0 GCs">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num" title="peak 32.0 KB · 0 GCs">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+8.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Update — whole document</th>
+                    <td class="num" title="peak 796.0 KB · 0 GCs">772.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num" title="peak 340.0 KB · 0 GCs">332.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+4.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Update — one field</th>
+                    <td class="num" title="peak 796.0 KB · 0 GCs">772.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+4.0 KB</td>
+                    <td class="num" title="peak 340.0 KB · 0 GCs">332.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                </tr>
+                <tr>
+                    <th scope="row">Update — no-op</th>
+                    <td class="num" title="peak 488.0 KB · 0 GCs">480.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+4.0 KB</td>
+                    <td class="num" title="peak 244.0 KB · 0 GCs">244.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                </tr>
+                <tr>
+                    <th scope="row">Delete — reset to default</th>
+                    <td class="num" title="peak 560.0 KB · 0 GCs">552.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num" title="peak 252.0 KB · 0 GCs">244.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+4.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Delete — remove file</th>
+                    <td class="num" title="peak 0 B · 0 GCs">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+20.0 KB</td>
+                    <td class="num" title="peak 0 B · 0 GCs">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+24.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Encrypt — codec only</th>
+                    <td class="num" title="peak 256.0 KB · 0 GCs">224.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">-84.0 KB</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                </tr>
+                <tr>
+                    <th scope="row">Decrypt — codec only</th>
+                    <td class="num" title="peak 272.0 KB · 0 GCs">240.0 KB</td>
+                    <td class="num">-4.0 KB</td>
+                    <td class="num">+16.0 KB</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                </tr>
+                <tr>
+                    <th scope="row">JSON encode only</th>
+                    <td class="num" title="peak 60.0 KB · 0 GCs">60.0 KB</td>
+                    <td class="num">+4.0 KB</td>
+                    <td class="num">+4.0 KB</td>
+                    <td class="num" title="peak 60.0 KB · 0 GCs">60.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                </tr>
+                <tr>
+                    <th scope="row">JSON decode only</th>
+                    <td class="num" title="peak 128.0 KB · 0 GCs">128.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num" title="peak 128.0 KB · 0 GCs">128.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section class="table-block">
+        <h3>Large · memory</h3>
+        <div class="scroll">
+            <table>
+                <thead>
+                <tr>
+                    <th scope="col">Scenario</th>
+                    <th colspan="3" scope="col">AndroidKeyStore AES-256-GCM</th>
+                    <th colspan="3" scope="col">Plaintext JSON (control)</th>
+                </tr>
+                <tr>
+                    <th></th>
+                    <th class="sub">alloc churn</th>
+                    <th class="sub">retained</th>
+                    <th class="sub">PSS Δ</th>
+                    <th class="sub">alloc churn</th>
+                    <th class="sub">retained</th>
+                    <th class="sub">PSS Δ</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <th scope="row">Create — first write</th>
+                    <td class="num" title="peak 46.66 MB · 6 GCs">46.66 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">-120.0 KB</td>
+                    <td class="num" title="peak 4.54 MB · 0 GCs">4.54 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+12.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Read — cold</th>
+                    <td class="num" title="peak 54.31 MB · 6 GCs">54.25 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+12.0 KB</td>
+                    <td class="num" title="peak 10.53 MB · 2 GCs">10.46 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+24.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Read — warm</th>
+                    <td class="num" title="peak 32.0 KB · 0 GCs">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num" title="peak 32.0 KB · 0 GCs">32.0 KB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                </tr>
+                <tr>
+                    <th scope="row">Update — whole document</th>
+                    <td class="num" title="peak 100.91 MB · 12 GCs">100.88 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num" title="peak 27.12 MB · 2 GCs">14.91 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                </tr>
+                <tr>
+                    <th scope="row">Update — one field</th>
+                    <td class="num" title="peak 100.88 MB · 12 GCs">100.84 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+4.0 KB</td>
+                    <td class="num" title="peak 15.04 MB · 2 GCs">14.97 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                </tr>
+                <tr>
+                    <th scope="row">Update — no-op</th>
+                    <td class="num" title="peak 54.32 MB · 7 GCs">54.25 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num" title="peak 10.50 MB · 2 GCs">10.47 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                </tr>
+                <tr>
+                    <th scope="row">Delete — reset to default</th>
+                    <td class="num" title="peak 54.32 MB · 6 GCs">54.32 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num" title="peak 10.53 MB · 3 GCs">10.50 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                </tr>
+                <tr>
+                    <th scope="row">Delete — remove file</th>
+                    <td class="num" title="peak 0 B · 0 GCs">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+12.0 KB</td>
+                    <td class="num" title="peak 0 B · 0 GCs">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+16.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Encrypt — codec only</th>
+                    <td class="num" title="peak 43.52 MB · 5 GCs">43.52 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                </tr>
+                <tr>
+                    <th scope="row">Decrypt — codec only</th>
+                    <td class="num" title="peak 44.29 MB · 5 GCs">44.29 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                    <td class="num muted">—</td>
+                </tr>
+                <tr>
+                    <th scope="row">JSON encode only</th>
+                    <td class="num" title="peak 2.99 MB · 0 GCs">2.99 MB</td>
+                    <td class="num">+4.0 KB</td>
+                    <td class="num">+93.0 KB</td>
+                    <td class="num" title="peak 2.99 MB · 0 GCs">2.99 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+4.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">JSON decode only</th>
+                    <td class="num" title="peak 5.91 MB · 0 GCs">5.88 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">0 B</td>
+                    <td class="num" title="peak 5.91 MB · 0 GCs">5.88 MB</td>
+                    <td class="num">0 B</td>
+                    <td class="num">+4.0 KB</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section>
+        <h2>Disk footprint</h2>
+        <p class="note">Bytes on disk after a write, against the plaintext JSON of the same
+            document. Overhead covers the IV, the authentication tag and any text encoding the
+            implementation applies to the ciphertext.</p>
+    </section>
+    <section class="table-block">
+        <div class="scroll">
+            <table>
+                <thead>
+                <tr>
+                    <th scope="col">Dataset</th>
+                    <th scope="col">Plaintext JSON</th>
+                    <th colspan="2" scope="col">AndroidKeyStore AES-256-GCM</th>
+                    <th colspan="2" scope="col">Plaintext JSON (control)</th>
+                </tr>
+                <tr>
+                    <th></th>
+                    <th class="sub">bytes</th>
+                    <th class="sub">on disk</th>
+                    <th class="sub">overhead</th>
+                    <th class="sub">on disk</th>
+                    <th class="sub">overhead</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <th scope="row">Empty</th>
+                    <td class="num">2 B</td>
+                    <td class="num">40 B</td>
+                    <td class="num slower">+1900.0%</td>
+                    <td class="num">2 B</td>
+                    <td class="num neutral">+0.0%</td>
+                </tr>
+                <tr>
+                    <th scope="row">Medium</th>
+                    <td class="num">27.9 KB</td>
+                    <td class="num">37.2 KB</td>
+                    <td class="num slower">+33.5%</td>
+                    <td class="num">27.9 KB</td>
+                    <td class="num neutral">+0.0%</td>
+                </tr>
+                <tr>
+                    <th scope="row">Large</th>
+                    <td class="num">1.42 MB</td>
+                    <td class="num">1.90 MB</td>
+                    <td class="num slower">+33.3%</td>
+                    <td class="num">1.42 MB</td>
+                    <td class="num neutral">+0.0%</td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    <section>
+        <h2>Partial update overhead</h2>
+        <p class="note">What one changed field actually costs, and whether DataStore rewrites the
+            entire encrypted document to apply it.</p>
+    </section>
+    <section class="cards">
+        <article class="card finding">
+            <h3>AndroidKeyStore AES-256-GCM · Medium</h3>
+            <p class="verdict bad">Changing one Long field of a 28,545 B document cost 8.54 ms and
+                allocated 790,528 B — 1.00× the cost of replacing the whole document. The write was
+                not partial: the file was replaced wholesale (new inode — temp file, fsync, atomic
+                rename), and 98.5% of its bytes differ (a fresh IV diffuses the whole ciphertext).
+                Jetpack DataStore has no delta path — updateData re-serializes the entire document
+                (and re-encrypts it, where the implementation encrypts) on every mutation, so update
+                cost scales with document size, not with the size of the change. Note what the
+                equality check does and does not save: an update that returns an unchanged instance
+                writes nothing — the file is asserted untouched — yet still costs 4.29 ms and
+                allocates 491,520 B, 50% of a real update. Only the write is elided, not the read:
+                this store uses MultiProcessDataStoreFactory, which re-reads the current value from
+                disk under its file lock — a full decode, and a decryption too where the
+                implementation encrypts — before running the transform. Budget every updateData at a
+                full read plus a write, whether or not the data changed.</p>
+            <table class="kv">
+                <tbody>
+                <tr>
+                    <th scope="row">Document size</th>
+                    <td class="num">27.9 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">File before / after</th>
+                    <td class="num">37.2 KB → 37.2 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Bytes changed</th>
+                    <td class="num">98.51%</td>
+                </tr>
+                <tr>
+                    <th scope="row">Identical prefix</th>
+                    <td class="num">0 B</td>
+                </tr>
+                <tr>
+                    <th scope="row">Inode replaced</th>
+                    <td class="num">yes — temp file + atomic rename</td>
+                </tr>
+                <tr>
+                    <th scope="row">One field</th>
+                    <td class="num">8.54 ms</td>
+                </tr>
+                <tr>
+                    <th scope="row">Whole document</th>
+                    <td class="num">8.56 ms</td>
+                </tr>
+                <tr>
+                    <th scope="row">One field vs whole document</th>
+                    <td class="num">1.00×</td>
+                </tr>
+                <tr>
+                    <th scope="row">No-op update</th>
+                    <td class="num">4.29 ms</td>
+                </tr>
+                <tr>
+                    <th scope="row">Allocated for one field</th>
+                    <td class="num">772.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Allocated for a no-op</th>
+                    <td class="num">480.0 KB</td>
+                </tr>
+                </tbody>
+            </table>
+        </article>
+        <article class="card finding">
+            <h3>AndroidKeyStore AES-256-GCM · Large</h3>
+            <p class="verdict bad">Changing one Long field of a 1,492,260 B document cost 173.37 ms
+                and allocated 66,736,128 B — 0.99× the cost of replacing the whole document. The
+                write was not partial: the file was replaced wholesale (new inode — temp file,
+                fsync, atomic rename), and 98.4% of its bytes differ (a fresh IV diffuses the whole
+                ciphertext). Jetpack DataStore has no delta path — updateData re-serializes the
+                entire document (and re-encrypts it, where the implementation encrypts) on every
+                mutation, so update cost scales with document size, not with the size of the change.
+                Note what the equality check does and does not save: an update that returns an
+                unchanged instance writes nothing — the file is asserted untouched — yet still costs
+                108.08 ms and allocates 56,881,152 B, 62% of a real update. Only the write is
+                elided, not the read: this store uses MultiProcessDataStoreFactory, which re-reads
+                the current value from disk under its file lock — a full decode, and a decryption
+                too where the implementation encrypts — before running the transform. Budget every
+                updateData at a full read plus a write, whether or not the data changed.</p>
+            <table class="kv">
+                <tbody>
+                <tr>
+                    <th scope="row">Document size</th>
+                    <td class="num">1.42 MB</td>
+                </tr>
+                <tr>
+                    <th scope="row">File before / after</th>
+                    <td class="num">1.90 MB → 1.90 MB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Bytes changed</th>
+                    <td class="num">98.44%</td>
+                </tr>
+                <tr>
+                    <th scope="row">Identical prefix</th>
+                    <td class="num">0 B</td>
+                </tr>
+                <tr>
+                    <th scope="row">Inode replaced</th>
+                    <td class="num">yes — temp file + atomic rename</td>
+                </tr>
+                <tr>
+                    <th scope="row">One field</th>
+                    <td class="num">173.37 ms</td>
+                </tr>
+                <tr>
+                    <th scope="row">Whole document</th>
+                    <td class="num">175.04 ms</td>
+                </tr>
+                <tr>
+                    <th scope="row">One field vs whole document</th>
+                    <td class="num">0.99×</td>
+                </tr>
+                <tr>
+                    <th scope="row">No-op update</th>
+                    <td class="num">108.08 ms</td>
+                </tr>
+                <tr>
+                    <th scope="row">Allocated for one field</th>
+                    <td class="num">63.64 MB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Allocated for a no-op</th>
+                    <td class="num">54.25 MB</td>
+                </tr>
+                </tbody>
+            </table>
+        </article>
+        <article class="card finding">
+            <h3>Plaintext JSON (control) · Medium</h3>
+            <p class="verdict bad">Changing one Long field of a 28,545 B document cost 6.87 ms and
+                allocated 339,968 B — 1.15× the cost of replacing the whole document. The write was
+                not partial: the file was replaced wholesale (new inode — temp file, fsync, atomic
+                rename). Jetpack DataStore has no delta path — updateData re-serializes the entire
+                document (and re-encrypts it, where the implementation encrypts) on every mutation,
+                so update cost scales with document size, not with the size of the change. Note what
+                the equality check does and does not save: an update that returns an unchanged
+                instance writes nothing — the file is asserted untouched — yet still costs 2.81 ms
+                and allocates 249,856 B, 41% of a real update. Only the write is elided, not the
+                read: this store uses MultiProcessDataStoreFactory, which re-reads the current value
+                from disk under its file lock — a full decode, and a decryption too where the
+                implementation encrypts — before running the transform. Budget every updateData at a
+                full read plus a write, whether or not the data changed.</p>
+            <table class="kv">
+                <tbody>
+                <tr>
+                    <th scope="row">Document size</th>
+                    <td class="num">27.9 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">File before / after</th>
+                    <td class="num">27.9 KB → 27.9 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Bytes changed</th>
+                    <td class="num">0.00%</td>
+                </tr>
+                <tr>
+                    <th scope="row">Identical prefix</th>
+                    <td class="num">30 B</td>
+                </tr>
+                <tr>
+                    <th scope="row">Inode replaced</th>
+                    <td class="num">yes — temp file + atomic rename</td>
+                </tr>
+                <tr>
+                    <th scope="row">One field</th>
+                    <td class="num">6.87 ms</td>
+                </tr>
+                <tr>
+                    <th scope="row">Whole document</th>
+                    <td class="num">5.95 ms</td>
+                </tr>
+                <tr>
+                    <th scope="row">One field vs whole document</th>
+                    <td class="num">1.15×</td>
+                </tr>
+                <tr>
+                    <th scope="row">No-op update</th>
+                    <td class="num">2.81 ms</td>
+                </tr>
+                <tr>
+                    <th scope="row">Allocated for one field</th>
+                    <td class="num">332.0 KB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Allocated for a no-op</th>
+                    <td class="num">244.0 KB</td>
+                </tr>
+                </tbody>
+            </table>
+        </article>
+        <article class="card finding">
+            <h3>Plaintext JSON (control) · Large</h3>
+            <p class="verdict bad">Changing one Long field of a 1,492,260 B document cost 116.28 ms
+                and allocated 15,732,736 B — 0.72× the cost of replacing the whole document. The
+                write was not partial: the file was replaced wholesale (new inode — temp file,
+                fsync, atomic rename). Jetpack DataStore has no delta path — updateData
+                re-serializes the entire document (and re-encrypts it, where the implementation
+                encrypts) on every mutation, so update cost scales with document size, not with the
+                size of the change. Note what the equality check does and does not save: an update
+                that returns an unchanged instance writes nothing — the file is asserted untouched —
+                yet still costs 84.45 ms and allocates 10,915,840 B, 73% of a real update. Only the
+                write is elided, not the read: this store uses MultiProcessDataStoreFactory, which
+                re-reads the current value from disk under its file lock — a full decode, and a
+                decryption too where the implementation encrypts — before running the transform.
+                Budget every updateData at a full read plus a write, whether or not the data
+                changed.</p>
+            <table class="kv">
+                <tbody>
+                <tr>
+                    <th scope="row">Document size</th>
+                    <td class="num">1.42 MB</td>
+                </tr>
+                <tr>
+                    <th scope="row">File before / after</th>
+                    <td class="num">1.42 MB → 1.42 MB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Bytes changed</th>
+                    <td class="num">0.00%</td>
+                </tr>
+                <tr>
+                    <th scope="row">Identical prefix</th>
+                    <td class="num">30 B</td>
+                </tr>
+                <tr>
+                    <th scope="row">Inode replaced</th>
+                    <td class="num">yes — temp file + atomic rename</td>
+                </tr>
+                <tr>
+                    <th scope="row">One field</th>
+                    <td class="num">116.28 ms</td>
+                </tr>
+                <tr>
+                    <th scope="row">Whole document</th>
+                    <td class="num">162.18 ms</td>
+                </tr>
+                <tr>
+                    <th scope="row">One field vs whole document</th>
+                    <td class="num">0.72×</td>
+                </tr>
+                <tr>
+                    <th scope="row">No-op update</th>
+                    <td class="num">84.45 ms</td>
+                </tr>
+                <tr>
+                    <th scope="row">Allocated for one field</th>
+                    <td class="num">15.00 MB</td>
+                </tr>
+                <tr>
+                    <th scope="row">Allocated for a no-op</th>
+                    <td class="num">10.41 MB</td>
+                </tr>
+                </tbody>
+            </table>
+        </article>
+    </section>
+    <section>
+        <details>
+            <summary>Raw measurements (72 rows)</summary>
+            <div class="scroll">
+                <table class="raw">
+                    <thead>
+                    <tr>
+                        <th>Implementation</th>
+                        <th>Scenario</th>
+                        <th>Dataset</th>
+                        <th>iters</th>
+                        <th>min</th>
+                        <th>median</th>
+                        <th>mean</th>
+                        <th>p90</th>
+                        <th>max</th>
+                        <th>std dev</th>
+                        <th>alloc</th>
+                        <th>retained</th>
+                        <th>disk</th>
+                        <th>notes</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Read — cold</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">2.40 ms</td>
+                        <td class="num">2.57 ms</td>
+                        <td class="num">2.62 ms</td>
+                        <td class="num">2.70 ms</td>
+                        <td class="num">3.35 ms</td>
+                        <td class="num">220.4 µs</td>
+                        <td class="num">104.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Create — first write</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">4.08 ms</td>
+                        <td class="num">4.65 ms</td>
+                        <td class="num">5.01 ms</td>
+                        <td class="num">5.04 ms</td>
+                        <td class="num">9.71 ms</td>
+                        <td class="num">1.35 ms</td>
+                        <td class="num">104.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">40 B</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Decrypt — codec only</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">1.72 ms</td>
+                        <td class="num">1.83 ms</td>
+                        <td class="num">1.85 ms</td>
+                        <td class="num">1.91 ms</td>
+                        <td class="num">2.03 ms</td>
+                        <td class="num">84.8 µs</td>
+                        <td class="num">72.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Delete — remove file</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">23.8 µs</td>
+                        <td class="num">25.7 µs</td>
+                        <td class="num">26.5 µs</td>
+                        <td class="num">29.7 µs</td>
+                        <td class="num">32.0 µs</td>
+                        <td class="num">2.2 µs</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Delete — reset to default</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">5.47 ms</td>
+                        <td class="num">5.65 ms</td>
+                        <td class="num">5.71 ms</td>
+                        <td class="num">5.90 ms</td>
+                        <td class="num">5.96 ms</td>
+                        <td class="num">152.1 µs</td>
+                        <td class="num">176.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Disk footprint</td>
+                        <td>Empty</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">40 B</td>
+                        <td>+38 B against the plaintext JSON.</td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Encrypt — codec only</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">1.72 ms</td>
+                        <td class="num">1.87 ms</td>
+                        <td class="num">1.88 ms</td>
+                        <td class="num">2.01 ms</td>
+                        <td class="num">2.30 ms</td>
+                        <td class="num">147.7 µs</td>
+                        <td class="num">72.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">40 B</td>
+                        <td>Ciphertext 40 B for 2 B of JSON.</td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>JSON decode only</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">7.1 µs</td>
+                        <td class="num">7.3 µs</td>
+                        <td class="num">8.1 µs</td>
+                        <td class="num">8.7 µs</td>
+                        <td class="num">15.8 µs</td>
+                        <td class="num">2.1 µs</td>
+                        <td class="num">0 B</td>
+                        <td class="num">-32.0 KB</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>JSON encode only</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">13.5 µs</td>
+                        <td class="num">13.8 µs</td>
+                        <td class="num">14.0 µs</td>
+                        <td class="num">14.2 µs</td>
+                        <td class="num">16.3 µs</td>
+                        <td class="num">723 ns</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Update — no-op</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">2.45 ms</td>
+                        <td class="num">2.67 ms</td>
+                        <td class="num">2.76 ms</td>
+                        <td class="num">2.88 ms</td>
+                        <td class="num">4.29 ms</td>
+                        <td class="num">430.3 µs</td>
+                        <td class="num">104.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td>File untouched (size and mtime asserted unchanged) — the write was
+                            skipped once equals() matched, but everything before it still ran.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Update — whole document</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">5.63 ms</td>
+                        <td class="num">5.93 ms</td>
+                        <td class="num">5.94 ms</td>
+                        <td class="num">6.20 ms</td>
+                        <td class="num">6.26 ms</td>
+                        <td class="num">205.8 µs</td>
+                        <td class="num">176.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Update — one field</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">5.79 ms</td>
+                        <td class="num">6.01 ms</td>
+                        <td class="num">6.01 ms</td>
+                        <td class="num">6.21 ms</td>
+                        <td class="num">6.35 ms</td>
+                        <td class="num">159.5 µs</td>
+                        <td class="num">176.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Read — warm</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">270.7 µs</td>
+                        <td class="num">396.2 µs</td>
+                        <td class="num">520.6 µs</td>
+                        <td class="num">464.4 µs</td>
+                        <td class="num">2.25 ms</td>
+                        <td class="num">471.0 µs</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Read — cold</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">6.71 ms</td>
+                        <td class="num">8.18 ms</td>
+                        <td class="num">8.57 ms</td>
+                        <td class="num">10.58 ms</td>
+                        <td class="num">12.17 ms</td>
+                        <td class="num">1.60 ms</td>
+                        <td class="num">480.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Create — first write</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">6.75 ms</td>
+                        <td class="num">7.44 ms</td>
+                        <td class="num">7.90 ms</td>
+                        <td class="num">9.10 ms</td>
+                        <td class="num">9.80 ms</td>
+                        <td class="num">1.02 ms</td>
+                        <td class="num">316.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">37.2 KB</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Decrypt — codec only</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">1.92 ms</td>
+                        <td class="num">2.17 ms</td>
+                        <td class="num">2.49 ms</td>
+                        <td class="num">3.46 ms</td>
+                        <td class="num">3.85 ms</td>
+                        <td class="num">616.8 µs</td>
+                        <td class="num">240.0 KB</td>
+                        <td class="num">-4.0 KB</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Delete — remove file</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">24.9 µs</td>
+                        <td class="num">27.8 µs</td>
+                        <td class="num">28.0 µs</td>
+                        <td class="num">30.0 µs</td>
+                        <td class="num">32.2 µs</td>
+                        <td class="num">2.1 µs</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Delete — reset to default</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">7.17 ms</td>
+                        <td class="num">7.44 ms</td>
+                        <td class="num">7.57 ms</td>
+                        <td class="num">7.80 ms</td>
+                        <td class="num">8.73 ms</td>
+                        <td class="num">376.2 µs</td>
+                        <td class="num">552.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Disk footprint</td>
+                        <td>Medium</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">37.2 KB</td>
+                        <td>+9555 B against the plaintext JSON.</td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Encrypt — codec only</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">1.82 ms</td>
+                        <td class="num">2.00 ms</td>
+                        <td class="num">2.13 ms</td>
+                        <td class="num">2.74 ms</td>
+                        <td class="num">2.80 ms</td>
+                        <td class="num">345.2 µs</td>
+                        <td class="num">224.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">37.2 KB</td>
+                        <td>Ciphertext 38100 B for 28545 B of JSON.</td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>JSON decode only</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">1.31 ms</td>
+                        <td class="num">1.32 ms</td>
+                        <td class="num">1.33 ms</td>
+                        <td class="num">1.36 ms</td>
+                        <td class="num">1.38 ms</td>
+                        <td class="num">22.2 µs</td>
+                        <td class="num">128.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>JSON encode only</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">552.2 µs</td>
+                        <td class="num">556.3 µs</td>
+                        <td class="num">564.8 µs</td>
+                        <td class="num">578.9 µs</td>
+                        <td class="num">620.1 µs</td>
+                        <td class="num">18.3 µs</td>
+                        <td class="num">60.0 KB</td>
+                        <td class="num">+4.0 KB</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Update — no-op</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">4.18 ms</td>
+                        <td class="num">4.38 ms</td>
+                        <td class="num">4.37 ms</td>
+                        <td class="num">4.47 ms</td>
+                        <td class="num">4.67 ms</td>
+                        <td class="num">130.9 µs</td>
+                        <td class="num">480.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td>File untouched (size and mtime asserted unchanged) — the write was
+                            skipped once equals() matched, but everything before it still ran.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Update — whole document</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">8.08 ms</td>
+                        <td class="num">8.33 ms</td>
+                        <td class="num">8.55 ms</td>
+                        <td class="num">8.43 ms</td>
+                        <td class="num">11.70 ms</td>
+                        <td class="num">858.3 µs</td>
+                        <td class="num">772.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Update — one field</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">8.11 ms</td>
+                        <td class="num">8.44 ms</td>
+                        <td class="num">8.68 ms</td>
+                        <td class="num">8.72 ms</td>
+                        <td class="num">11.39 ms</td>
+                        <td class="num">797.9 µs</td>
+                        <td class="num">772.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Read — warm</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">204.1 µs</td>
+                        <td class="num">223.7 µs</td>
+                        <td class="num">230.0 µs</td>
+                        <td class="num">250.3 µs</td>
+                        <td class="num">261.3 µs</td>
+                        <td class="num">16.1 µs</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Read — cold</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">106.16 ms</td>
+                        <td class="num">108.65 ms</td>
+                        <td class="num">108.59 ms</td>
+                        <td class="num">110.04 ms</td>
+                        <td class="num">111.56 ms</td>
+                        <td class="num">1.67 ms</td>
+                        <td class="num">54.25 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Create — first write</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">76.39 ms</td>
+                        <td class="num">80.91 ms</td>
+                        <td class="num">79.93 ms</td>
+                        <td class="num">81.29 ms</td>
+                        <td class="num">84.94 ms</td>
+                        <td class="num">2.83 ms</td>
+                        <td class="num">46.66 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">1.90 MB</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Decrypt — codec only</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">36.18 ms</td>
+                        <td class="num">36.68 ms</td>
+                        <td class="num">36.97 ms</td>
+                        <td class="num">38.02 ms</td>
+                        <td class="num">38.44 ms</td>
+                        <td class="num">850.0 µs</td>
+                        <td class="num">44.29 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Delete — remove file</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">138.7 µs</td>
+                        <td class="num">160.0 µs</td>
+                        <td class="num">161.8 µs</td>
+                        <td class="num">178.0 µs</td>
+                        <td class="num">187.0 µs</td>
+                        <td class="num">16.6 µs</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Delete — reset to default</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">111.32 ms</td>
+                        <td class="num">113.31 ms</td>
+                        <td class="num">115.79 ms</td>
+                        <td class="num">118.35 ms</td>
+                        <td class="num">123.89 ms</td>
+                        <td class="num">4.16 ms</td>
+                        <td class="num">54.32 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Disk footprint</td>
+                        <td>Large</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">1.90 MB</td>
+                        <td>+497460 B against the plaintext JSON.</td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Encrypt — codec only</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">30.98 ms</td>
+                        <td class="num">32.79 ms</td>
+                        <td class="num">32.82 ms</td>
+                        <td class="num">34.06 ms</td>
+                        <td class="num">34.60 ms</td>
+                        <td class="num">1.18 ms</td>
+                        <td class="num">43.52 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">1.90 MB</td>
+                        <td>Ciphertext 1989720 B for 1492260 B of JSON.</td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>JSON decode only</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">67.73 ms</td>
+                        <td class="num">71.47 ms</td>
+                        <td class="num">71.97 ms</td>
+                        <td class="num">73.63 ms</td>
+                        <td class="num">76.93 ms</td>
+                        <td class="num">2.66 ms</td>
+                        <td class="num">5.88 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>JSON encode only</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">30.25 ms</td>
+                        <td class="num">33.02 ms</td>
+                        <td class="num">32.60 ms</td>
+                        <td class="num">34.42 ms</td>
+                        <td class="num">34.50 ms</td>
+                        <td class="num">1.57 ms</td>
+                        <td class="num">2.99 MB</td>
+                        <td class="num">+4.0 KB</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Update — no-op</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">107.86 ms</td>
+                        <td class="num">109.66 ms</td>
+                        <td class="num">109.42 ms</td>
+                        <td class="num">110.51 ms</td>
+                        <td class="num">110.94 ms</td>
+                        <td class="num">1.13 ms</td>
+                        <td class="num">54.25 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td>File untouched (size and mtime asserted unchanged) — the write was
+                            skipped once equals() matched, but everything before it still ran.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Update — whole document</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">173.39 ms</td>
+                        <td class="num">175.26 ms</td>
+                        <td class="num">176.39 ms</td>
+                        <td class="num">177.83 ms</td>
+                        <td class="num">183.02 ms</td>
+                        <td class="num">3.17 ms</td>
+                        <td class="num">100.88 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Update — one field</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">177.64 ms</td>
+                        <td class="num">186.75 ms</td>
+                        <td class="num">189.14 ms</td>
+                        <td class="num">202.45 ms</td>
+                        <td class="num">209.71 ms</td>
+                        <td class="num">11.37 ms</td>
+                        <td class="num">100.84 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>AndroidKeyStore AES-256-GCM</td>
+                        <td>Read — warm</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">241.3 µs</td>
+                        <td class="num">259.8 µs</td>
+                        <td class="num">267.8 µs</td>
+                        <td class="num">286.8 µs</td>
+                        <td class="num">293.2 µs</td>
+                        <td class="num">19.1 µs</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Read — cold</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">767.3 µs</td>
+                        <td class="num">868.9 µs</td>
+                        <td class="num">922.8 µs</td>
+                        <td class="num">1.08 ms</td>
+                        <td class="num">1.33 ms</td>
+                        <td class="num">150.2 µs</td>
+                        <td class="num">32.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Create — first write</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">2.92 ms</td>
+                        <td class="num">3.62 ms</td>
+                        <td class="num">3.78 ms</td>
+                        <td class="num">4.38 ms</td>
+                        <td class="num">5.16 ms</td>
+                        <td class="num">599.9 µs</td>
+                        <td class="num">32.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">2 B</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Delete — remove file</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">33.8 µs</td>
+                        <td class="num">51.5 µs</td>
+                        <td class="num">68.8 µs</td>
+                        <td class="num">97.3 µs</td>
+                        <td class="num">200.9 µs</td>
+                        <td class="num">41.7 µs</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Delete — reset to default</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">2.42 ms</td>
+                        <td class="num">2.86 ms</td>
+                        <td class="num">2.96 ms</td>
+                        <td class="num">3.23 ms</td>
+                        <td class="num">4.27 ms</td>
+                        <td class="num">455.8 µs</td>
+                        <td class="num">32.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Disk footprint</td>
+                        <td>Empty</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">2 B</td>
+                        <td>0 B against the plaintext JSON.</td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>JSON decode only</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">6.7 µs</td>
+                        <td class="num">7.0 µs</td>
+                        <td class="num">7.2 µs</td>
+                        <td class="num">8.0 µs</td>
+                        <td class="num">8.5 µs</td>
+                        <td class="num">569 ns</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>JSON encode only</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">10.4 µs</td>
+                        <td class="num">10.7 µs</td>
+                        <td class="num">16.4 µs</td>
+                        <td class="num">11.4 µs</td>
+                        <td class="num">94.5 µs</td>
+                        <td class="num">20.9 µs</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Update — no-op</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">772.7 µs</td>
+                        <td class="num">905.6 µs</td>
+                        <td class="num">1.02 ms</td>
+                        <td class="num">1.05 ms</td>
+                        <td class="num">2.25 ms</td>
+                        <td class="num">351.8 µs</td>
+                        <td class="num">32.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td>File untouched (size and mtime asserted unchanged) — the write was
+                            skipped once equals() matched, but everything before it still ran.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Update — whole document</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">2.06 ms</td>
+                        <td class="num">2.33 ms</td>
+                        <td class="num">2.29 ms</td>
+                        <td class="num">2.48 ms</td>
+                        <td class="num">2.51 ms</td>
+                        <td class="num">158.5 µs</td>
+                        <td class="num">32.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Update — one field</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">2.17 ms</td>
+                        <td class="num">2.42 ms</td>
+                        <td class="num">2.61 ms</td>
+                        <td class="num">3.22 ms</td>
+                        <td class="num">3.35 ms</td>
+                        <td class="num">378.8 µs</td>
+                        <td class="num">32.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Read — warm</td>
+                        <td>Empty</td>
+                        <td class="num">15</td>
+                        <td class="num">274.3 µs</td>
+                        <td class="num">313.8 µs</td>
+                        <td class="num">325.3 µs</td>
+                        <td class="num">375.0 µs</td>
+                        <td class="num">392.1 µs</td>
+                        <td class="num">40.3 µs</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Read — cold</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">3.68 ms</td>
+                        <td class="num">4.12 ms</td>
+                        <td class="num">4.14 ms</td>
+                        <td class="num">4.36 ms</td>
+                        <td class="num">4.98 ms</td>
+                        <td class="num">343.9 µs</td>
+                        <td class="num">244.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Create — first write</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">4.47 ms</td>
+                        <td class="num">4.90 ms</td>
+                        <td class="num">5.00 ms</td>
+                        <td class="num">5.67 ms</td>
+                        <td class="num">6.06 ms</td>
+                        <td class="num">492.4 µs</td>
+                        <td class="num">120.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">27.9 KB</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Delete — remove file</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">55.6 µs</td>
+                        <td class="num">93.4 µs</td>
+                        <td class="num">105.2 µs</td>
+                        <td class="num">127.0 µs</td>
+                        <td class="num">297.9 µs</td>
+                        <td class="num">57.0 µs</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Delete — reset to default</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">4.05 ms</td>
+                        <td class="num">4.59 ms</td>
+                        <td class="num">4.81 ms</td>
+                        <td class="num">5.18 ms</td>
+                        <td class="num">6.36 ms</td>
+                        <td class="num">613.5 µs</td>
+                        <td class="num">244.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Disk footprint</td>
+                        <td>Medium</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">27.9 KB</td>
+                        <td>0 B against the plaintext JSON.</td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>JSON decode only</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">1.47 ms</td>
+                        <td class="num">2.02 ms</td>
+                        <td class="num">2.63 ms</td>
+                        <td class="num">3.14 ms</td>
+                        <td class="num">6.20 ms</td>
+                        <td class="num">1.35 ms</td>
+                        <td class="num">128.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>JSON encode only</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">718.9 µs</td>
+                        <td class="num">855.7 µs</td>
+                        <td class="num">1.04 ms</td>
+                        <td class="num">1.42 ms</td>
+                        <td class="num">2.02 ms</td>
+                        <td class="num">354.6 µs</td>
+                        <td class="num">60.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Update — no-op</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">2.39 ms</td>
+                        <td class="num">2.73 ms</td>
+                        <td class="num">2.67 ms</td>
+                        <td class="num">2.86 ms</td>
+                        <td class="num">2.93 ms</td>
+                        <td class="num">178.1 µs</td>
+                        <td class="num">244.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td>File untouched (size and mtime asserted unchanged) — the write was
+                            skipped once equals() matched, but everything before it still ran.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Update — whole document</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">8.02 ms</td>
+                        <td class="num">10.82 ms</td>
+                        <td class="num">12.12 ms</td>
+                        <td class="num">12.69 ms</td>
+                        <td class="num">32.64 ms</td>
+                        <td class="num">6.02 ms</td>
+                        <td class="num">332.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Update — one field</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">4.31 ms</td>
+                        <td class="num">4.74 ms</td>
+                        <td class="num">5.60 ms</td>
+                        <td class="num">6.45 ms</td>
+                        <td class="num">13.64 ms</td>
+                        <td class="num">2.29 ms</td>
+                        <td class="num">332.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Read — warm</td>
+                        <td>Medium</td>
+                        <td class="num">15</td>
+                        <td class="num">158.2 µs</td>
+                        <td class="num">365.4 µs</td>
+                        <td class="num">375.9 µs</td>
+                        <td class="num">521.0 µs</td>
+                        <td class="num">708.0 µs</td>
+                        <td class="num">146.2 µs</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Read — cold</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">81.83 ms</td>
+                        <td class="num">84.25 ms</td>
+                        <td class="num">88.48 ms</td>
+                        <td class="num">96.37 ms</td>
+                        <td class="num">99.86 ms</td>
+                        <td class="num">6.85 ms</td>
+                        <td class="num">10.46 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Create — first write</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">127.23 ms</td>
+                        <td class="num">212.44 ms</td>
+                        <td class="num">215.81 ms</td>
+                        <td class="num">284.46 ms</td>
+                        <td class="num">349.29 ms</td>
+                        <td class="num">72.84 ms</td>
+                        <td class="num">4.54 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">1.42 MB</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Delete — remove file</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">123.6 µs</td>
+                        <td class="num">193.3 µs</td>
+                        <td class="num">203.4 µs</td>
+                        <td class="num">234.8 µs</td>
+                        <td class="num">372.7 µs</td>
+                        <td class="num">81.0 µs</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Delete — reset to default</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">90.02 ms</td>
+                        <td class="num">98.92 ms</td>
+                        <td class="num">116.30 ms</td>
+                        <td class="num">145.68 ms</td>
+                        <td class="num">180.77 ms</td>
+                        <td class="num">31.75 ms</td>
+                        <td class="num">10.50 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Disk footprint</td>
+                        <td>Large</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0</td>
+                        <td class="num">0 B</td>
+                        <td class="num">0 B</td>
+                        <td class="num">1.42 MB</td>
+                        <td>0 B against the plaintext JSON.</td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>JSON decode only</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">68.52 ms</td>
+                        <td class="num">76.34 ms</td>
+                        <td class="num">77.16 ms</td>
+                        <td class="num">86.22 ms</td>
+                        <td class="num">87.51 ms</td>
+                        <td class="num">6.73 ms</td>
+                        <td class="num">5.88 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>JSON encode only</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">31.53 ms</td>
+                        <td class="num">34.18 ms</td>
+                        <td class="num">34.15 ms</td>
+                        <td class="num">36.20 ms</td>
+                        <td class="num">36.29 ms</td>
+                        <td class="num">1.63 ms</td>
+                        <td class="num">2.99 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Update — no-op</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">77.26 ms</td>
+                        <td class="num">82.58 ms</td>
+                        <td class="num">84.94 ms</td>
+                        <td class="num">91.78 ms</td>
+                        <td class="num">96.23 ms</td>
+                        <td class="num">6.43 ms</td>
+                        <td class="num">10.47 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td>File untouched (size and mtime asserted unchanged) — the write was
+                            skipped once equals() matched, but everything before it still ran.
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Update — whole document</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">108.64 ms</td>
+                        <td class="num">113.09 ms</td>
+                        <td class="num">114.41 ms</td>
+                        <td class="num">116.79 ms</td>
+                        <td class="num">122.12 ms</td>
+                        <td class="num">3.93 ms</td>
+                        <td class="num">14.91 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Update — one field</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">114.50 ms</td>
+                        <td class="num">117.23 ms</td>
+                        <td class="num">118.50 ms</td>
+                        <td class="num">119.04 ms</td>
+                        <td class="num">129.33 ms</td>
+                        <td class="num">4.61 ms</td>
+                        <td class="num">14.97 MB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td>Plaintext JSON (control)</td>
+                        <td>Read — warm</td>
+                        <td>Large</td>
+                        <td class="num">7</td>
+                        <td class="num">259.0 µs</td>
+                        <td class="num">296.6 µs</td>
+                        <td class="num">335.7 µs</td>
+                        <td class="num">433.8 µs</td>
+                        <td class="num">489.5 µs</td>
+                        <td class="num">82.4 µs</td>
+                        <td class="num">32.0 KB</td>
+                        <td class="num">0 B</td>
+                        <td class="num">—</td>
+                        <td></td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </details>
+    </section>
+</main>
+</body>
+</html>

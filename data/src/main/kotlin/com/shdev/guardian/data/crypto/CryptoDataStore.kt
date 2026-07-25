@@ -33,7 +33,7 @@ interface CryptoDataStore {
     fun decrypt(stored: ByteArray): String?
 }
 
-internal class CryptoDataStoreIml(private val context: Context) : CryptoDataStore {
+internal class CryptoDataStoreImpl(private val context: Context) : CryptoDataStore {
     companion object {
         private const val ALGORITHM = KeyProperties.KEY_ALGORITHM_AES
         private const val BLOCK_MODE = KeyProperties.BLOCK_MODE_GCM
